@@ -1,4 +1,4 @@
-﻿using ConditionParser.Analyzers;
+﻿using ConditionParser.Expressions;
 using ConditionParser.Models;
 using ConditionParser.Modes;
 using System.Linq;
@@ -7,20 +7,15 @@ namespace ConditionParser
 {
     public static class ConditionParser
     {
-        static IAnalyzer[] _analyzers = new IAnalyzer[] {
-            new ComparerAnalyzer(),
-            new OperandAnalyzer(),
-            new ValueAnalyzer()
-        };
 
-        public static Condition Parse(string condition)
+        public static Expression Parse(string condition)
         {
             var iterator = new Iterator(condition);
             iterator.TrimStart();
             return Analyze(iterator, null, null);
         }
 
-        static Condition Analyze(Iterator iterator, Condition left, Operand? operand)
+        static Expression Analyze(Iterator iterator, Expression left, Operand? operand)
         {
             if (iterator.End) return left;
 
@@ -35,41 +30,39 @@ namespace ConditionParser
             }
             else
             {
-                var tree = new Condition();
-                var analyzer = _analyzers.FirstOrDefault(f => f.IsMatched(iterator));
-                tree.Left = analyzer.Extract(iterator);
-                analyzer = _analyzers.FirstOrDefault(f => f.IsMatched(iterator));
-                if (!(analyzer is ComparerAnalyzer)) throw new ConditionParseException(iterator.Position);
-                tree.Connector = analyzer.Extract(iterator);
-                analyzer = _analyzers.FirstOrDefault(f => f.IsMatched(iterator));
-                if (!(analyzer is ValueAnalyzer)) throw new ConditionParseException(iterator.Position);
-                tree.Right = analyzer.Extract(iterator);
-                tree = Merge(left, operand, tree);
-                if (iterator.End) return tree;
-                analyzer = _analyzers.FirstOrDefault(f => f.IsMatched(iterator));
+                var filter = new FilterExpression();
+                if (!iterator.IsValue()) throw new ConditionParseException(iterator.Position);
+                filter.Property = iterator.ExtractValue().Value.ToString();
+                if (!iterator.IsComparer()) throw new ConditionParseException(iterator.Position);
+                filter.Comparer = iterator.ExtractComparer();
+                if (!iterator.IsValue()) throw new ConditionParseException(iterator.Position);
+                filter.Value = iterator.ExtractValue();
+                var result = Merge(left, operand, filter);
+                if (iterator.End) return filter;
 
-                if (analyzer is OperandAnalyzer operandAnalyzer)
+                if (iterator.IsOperand())
                 {
-                    var mOperand = analyzer.Extract(iterator);
-                    tree = Analyze(iterator, tree, (Operand)mOperand);
+                    var mOperand = iterator.ExtractOperand();
+                    result = Analyze(iterator, filter, mOperand);
                 }
 
-                return tree;
+                return result;
             }
         }
 
-        static Condition Merge(Condition left, Operand? operand, Condition right)
+        static Expression Merge(Expression left, Operand? operand, Expression right)
         {
             if (operand.HasValue)
             {
-                return new Condition
+                return new BinaryExpression
                 {
                     Left = left,
-                    Connector = operand,
+                    Operand = operand.Value,
                     Right = right
                 };
             }
             return left ?? right;
         }
+
     }
 }
