@@ -26,28 +26,41 @@ namespace ConditionParser
                 tree = Merge(left, operand, tree);
                 if (iterator.Current != ')') throw new ConditionParseException(iterator.Position);
                 iterator.Next();
+                iterator.TrimStart();
+
+                if (!iterator.End && iterator.IsOperand())
+                {
+                    var mOperand = iterator.ExtractOperand();
+                    tree = Analyze(iterator, tree, mOperand);
+                }
+
                 return tree;
             }
             else
             {
-                var filter = new FilterExpression();
-                if (!iterator.IsValue()) throw new ConditionParseException(iterator.Position);
-                filter.Property = iterator.ExtractValue().Value.ToString();
-                if (!iterator.IsComparer()) throw new ConditionParseException(iterator.Position);
-                filter.Comparer = iterator.ExtractComparer();
-                if (!iterator.IsValue()) throw new ConditionParseException(iterator.Position);
-                filter.Value = iterator.ExtractValue();
+                var filter = GetFilter(iterator);
                 var result = Merge(left, operand, filter);
-                if (iterator.End) return filter;
 
-                if (iterator.IsOperand())
+                if (!iterator.End && iterator.IsOperand())
                 {
                     var mOperand = iterator.ExtractOperand();
-                    result = Analyze(iterator, filter, mOperand);
+                    result = Analyze(iterator, result, mOperand);
                 }
 
                 return result;
             }
+        }
+
+        private static FilterExpression GetFilter(Iterator iterator)
+        {
+            var filter = new FilterExpression();
+            if (!iterator.IsValue()) throw new ConditionParseException(iterator.Position);
+            filter.Property = iterator.ExtractValue(true).Value.ToString();
+            if (!iterator.IsComparer()) throw new ConditionParseException(iterator.Position);
+            filter.Comparer = iterator.ExtractComparer();
+            if (!iterator.IsValue()) throw new ConditionParseException(iterator.Position);
+            filter.Value = iterator.ExtractValue();
+            return filter;
         }
 
         static Expression Merge(Expression left, Operand? operand, Expression right)
@@ -61,6 +74,7 @@ namespace ConditionParser
                     Right = right
                 };
             }
+
             return left ?? right;
         }
 

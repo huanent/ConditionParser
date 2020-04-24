@@ -9,9 +9,11 @@ namespace ConditionParser.Models
 {
     public class Iterator
     {
-        static char[] _trimChars = new[] { '\t', '\r', '\n', ' ' };
-        static readonly string[] _or = new[] { "||", "or", "|", };
-        static readonly string[] _and = new[] { "and", "&&", "&", };
+        static readonly char[] _trimStartChars = new[] { '\t', '\r', '\n', ' ' };
+        static readonly string[] _orSymbols = new[] { "||", "or", "|", };
+        static readonly string[] _andSymbols = new[] { "and", "&&", "&", };
+        static readonly char[] _comparerStartSymbols = new char[] { '>', '=', '<', '!' };
+        static readonly char[] _noWrapStringEndSymbols = new char[] { ' ', '>', '<', '=', '!', '&', '|', ')' };
 
         readonly static Dictionary<string, Comparer> _comparerMapping = new Dictionary<string, Comparer>
         {
@@ -26,9 +28,6 @@ namespace ConditionParser.Models
             { ">",Comparer.GreaterThan },
             { "<",Comparer.LessThan },
         };
-
-        readonly static char[] _comparerStartSymbols = new char[] { '>', '=', '<', '!' };
-        static char[] _normalEndSymbols = new char[] { ' ', '>', '<', '=', '!', '&', '|', ')' };
 
         public string Raw { get; private set; }
 
@@ -62,7 +61,7 @@ namespace ConditionParser.Models
         {
             while (!End)
             {
-                if (_trimChars.Any(a => a == Current))
+                if (_trimStartChars.Any(a => a == Current))
                 {
                     if (!Next()) break;
                 }
@@ -91,8 +90,8 @@ namespace ConditionParser.Models
 
         public Operand ExtractOperand()
         {
-            var or = _or.FirstOrDefault(f => StartWith(f));
-            var and = or == null ? _and.FirstOrDefault(f => StartWith(f)) : null;
+            var or = _orSymbols.FirstOrDefault(f => StartWith(f));
+            var and = or == null ? _andSymbols.FirstOrDefault(f => StartWith(f)) : null;
             Next((or ?? and).Length);
             TrimStart();
             return or == null ? Operand.And : Operand.Or;
@@ -115,45 +114,45 @@ namespace ConditionParser.Models
 
         public bool IsValue() => !IsComparer() && !IsOperand();
 
-        public ValueExpression ExtractValue()
+        public ValueExpression ExtractValue(bool sureToBeString = false)
         {
-            char? symbol = null;
+            char? wrapSymbol = null;
 
             var valueBuilder = new StringBuilder();
 
             if (Current == '\"')
             {
-                symbol = '\"';
+                wrapSymbol = '\"';
                 Next();
             }
 
             if (Current == '\'')
             {
-                symbol = '\'';
+                wrapSymbol = '\'';
                 Next();
             }
 
             while (true)
             {
-                if (!symbol.HasValue && _normalEndSymbols.Any(a => Current == a)) break;
+                if (!wrapSymbol.HasValue && _noWrapStringEndSymbols.Any(a => Current == a)) break;
 
-                if (symbol == Current)
+                if (wrapSymbol == Current)
                 {
                     Next();
                     break;
                 }
 
                 valueBuilder.Append(Current);
-                var hasNext = Next();
-                if (!hasNext)
+
+                if (!Next())
                 {
-                    if (symbol.HasValue) throw new ConditionParseException(Position);
+                    if (wrapSymbol.HasValue) throw new ConditionParseException(Position);
                     break;
                 }
             }
 
             TrimStart();
-            return new ValueExpression(valueBuilder.ToString(), symbol.HasValue);
+            return new ValueExpression(valueBuilder.ToString(), wrapSymbol.HasValue || sureToBeString);
         }
     }
 }

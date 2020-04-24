@@ -6,13 +6,37 @@ namespace ConditionParser.Expressions
 {
     public class ValueExpression : Expression
     {
-        string _value;
-        bool _sureToBeString;
 
         public ValueExpression(string value, bool sureToBeString)
         {
-            _value = value;
-            _sureToBeString = sureToBeString;
+            if (!sureToBeString)
+            {
+                var mValue = value.ToLower();
+
+                if (mValue == "true" || mValue == "false")
+                {
+                    Type = typeof(bool);
+                    Value = bool.Parse(mValue);
+                    return;
+                }
+
+                if (decimal.TryParse(value, out var number))
+                {
+                    Type = typeof(decimal);
+                    Value = number;
+                    return;
+                }
+
+                if (DateTime.TryParse(value, out var datetime))
+                {
+                    Type = typeof(DateTime);
+                    Value = datetime;
+                    return;
+                }
+            }
+
+            Value = value;
+            Type = typeof(string);
         }
 
         public override ExpressionType NodeType => ExpressionType.Value;
