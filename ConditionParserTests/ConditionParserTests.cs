@@ -1,4 +1,5 @@
 ﻿using ConditionParser.Expressions;
+using ConditionParser.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -134,6 +135,15 @@ namespace ConditionParser.Tests
             var settings = new JsonSerializerSettings();
             settings.Converters.Add(new StringEnumConverter());
             var json = JsonConvert.SerializeObject(expression, settings);
+        }
+
+        [TestMethod()]
+        public void Parse_Fail_Test()
+        {
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("("), "Parse condition error at positon 1");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("(a=2"), "Parse condition error at positon 4");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("a=2 ("), "Parse condition error at positon 4");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("a=2 sd"), "Parse condition error at positon 4");
         }
     }
 }

@@ -17,36 +17,28 @@ namespace ConditionParser
 
         static Expression Analyze(Iterator iterator, Expression left, Operand? operand)
         {
-            if (iterator.End) return left;
-
             if (iterator.Current == '(')
             {
                 iterator.Next();
-                var tree = Analyze(iterator, null, null);
-                tree = Merge(left, operand, tree);
+                var result = Analyze(iterator, null, null);
+                result = Merge(left, operand, result);
                 if (iterator.Current != ')') throw new ConditionParseException(iterator.Position);
                 iterator.Next();
                 iterator.TrimStart();
-
-                if (!iterator.End && iterator.IsOperand())
-                {
-                    var mOperand = iterator.ExtractOperand();
-                    tree = Analyze(iterator, tree, mOperand);
-                }
-
-                return tree;
+                if (iterator.End || iterator.Current == ')') return result;
+                if (!iterator.IsOperand()) throw new ConditionParseException(iterator.Position);
+                var mOperand = iterator.ExtractOperand();
+                result = Analyze(iterator, result, mOperand);
+                return result;
             }
             else
             {
                 var filter = GetFilter(iterator);
                 var result = Merge(left, operand, filter);
-
-                if (!iterator.End && iterator.IsOperand())
-                {
-                    var mOperand = iterator.ExtractOperand();
-                    result = Analyze(iterator, result, mOperand);
-                }
-
+                if (iterator.End || iterator.Current == ')') return result;
+                if (!iterator.IsOperand()) throw new ConditionParseException(iterator.Position);
+                var mOperand = iterator.ExtractOperand();
+                result = Analyze(iterator, result, mOperand);
                 return result;
             }
         }

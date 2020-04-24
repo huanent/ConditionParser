@@ -33,9 +33,16 @@ namespace ConditionParser.Models
 
         public int Position { get; private set; }
 
-        public char Current => Raw[Position];
+        public char Current
+        {
+            get
+            {
+                if (Position > Raw.Length - 1) throw new ConditionParseException(Position);
+                return Raw[Position];
+            }
+        }
 
-        public bool End => Position >= (Raw.Length - 1);
+        public bool End => Position >= Raw.Length;
 
         public bool HasLeftGap
         {
