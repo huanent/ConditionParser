@@ -136,7 +136,7 @@ namespace ConditionParser.Models
             {
                 if (!wrapSymbol.HasValue && _noWrapStringEndSymbols.Any(a => Current == a)) break;
 
-                if (wrapSymbol == Current)
+                if (wrapSymbol == Current && Raw[Position - 1] != '\\')
                 {
                     Next();
                     break;
