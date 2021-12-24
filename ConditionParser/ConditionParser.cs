@@ -20,6 +20,7 @@ namespace ConditionParser
             if (iterator.Current == '(')
             {
                 iterator.Next();
+                iterator.TrimStart();
                 var result = Analyze(iterator, null, null);
                 result = Merge(left, operand, result);
                 if (iterator.Current != ')') throw new ConditionParseException(iterator.Position);
