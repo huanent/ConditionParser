@@ -81,26 +81,28 @@ namespace ConditionParser.Tests
         [TestMethod()]
         public void Parse_With_multi_Operand_Test()
         {
-            var expression = ConditionParser.Parse("IsMan='true'&&age>23||name='alex'");
+            var expression = ConditionParser.Parse(" age>23||name='alex' && IsMan='true'");
             Assert.AreEqual(expression.NodeType, ExpressionType.Binary);
             var binary = expression as BinaryExpression;
-            Assert.IsInstanceOfType(binary.Left, typeof(BinaryExpression));
-            Assert.IsInstanceOfType(binary.Right, typeof(FilterExpression));
-            var left = binary.Left as BinaryExpression;
-            var right = binary.Right as FilterExpression;
+            Assert.IsInstanceOfType(binary.Left, typeof(FilterExpression));
+            Assert.IsInstanceOfType(binary.Right, typeof(BinaryExpression));
+            var left = binary.Left as FilterExpression;
+            var right = binary.Right as BinaryExpression;
+            
+            Assert.AreEqual(left.Property, "age");
+            Assert.AreEqual(left.Comparer, Modes.Comparer.GreaterThan);
+            Assert.AreEqual(left.Value.Value, 23M);
+            
             Assert.AreEqual(binary.Operand, Modes.Operand.Or);
-            Assert.AreEqual(left.Operand, Modes.Operand.And);
+            Assert.AreEqual(right.Operand, Modes.Operand.And);
 
-            Assert.AreEqual((left.Left as FilterExpression).Comparer, Modes.Comparer.EqualTo);
-            Assert.AreEqual((left.Left as FilterExpression).Property, "IsMan");
-            Assert.AreEqual((left.Left as FilterExpression).Value.Value, "true");
+            Assert.AreEqual((right.Left as FilterExpression).Comparer, Modes.Comparer.EqualTo);
+            Assert.AreEqual((right.Left as FilterExpression).Property, "name");
+            Assert.AreEqual((right.Left as FilterExpression).Value.Value, "alex");
 
-            Assert.AreEqual((left.Right as FilterExpression).Comparer, Modes.Comparer.GreaterThan);
-            Assert.AreEqual((left.Right as FilterExpression).Property, "age");
-            Assert.AreEqual((left.Right as FilterExpression).Value.Value, 23M);
-
-            Assert.AreEqual(right.Property, "name");
-            Assert.AreEqual(right.Value.Value, "alex");
+            Assert.AreEqual((right.Right as FilterExpression).Comparer, Modes.Comparer.EqualTo);
+            Assert.AreEqual((right.Right as FilterExpression).Property, "IsMan");
+            Assert.AreEqual((right.Right as FilterExpression).Value.Value, "true");
         }
 
         [TestMethod()]
@@ -131,7 +133,9 @@ namespace ConditionParser.Tests
         [TestMethod()]
         public void Parse_complex_Test()
         {
-            var expression = ConditionParser.Parse("(name='alex' and age>=28) ||(address Contains \"厦门\" & (name startwith 'a' || school ='双十'))");
+            var expression =
+                ConditionParser.Parse(
+                    "(name='alex' and age>=28) ||(address Contains \"厦门\" & (name startwith 'a' || school ='双十'))");
             var settings = new JsonSerializerSettings();
             settings.Converters.Add(new StringEnumConverter());
             var json = JsonConvert.SerializeObject(expression, settings);
@@ -140,10 +144,14 @@ namespace ConditionParser.Tests
         [TestMethod()]
         public void Parse_Fail_Test()
         {
-            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("("), "Parse condition error at positon 1");
-            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("(a=2"), "Parse condition error at positon 4");
-            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("a=2 ("), "Parse condition error at positon 4");
-            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("a=2 sd"), "Parse condition error at positon 4");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("("),
+                "Parse condition error at positon 1");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("(a=2"),
+                "Parse condition error at positon 4");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("a=2 ("),
+                "Parse condition error at positon 4");
+            Assert.ThrowsException<ConditionParseException>(() => ConditionParser.Parse("a=2 sd"),
+                "Parse condition error at positon 4");
         }
     }
 }

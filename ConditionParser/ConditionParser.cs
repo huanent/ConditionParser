@@ -1,4 +1,5 @@
-﻿using ConditionParser.Expressions;
+﻿using System;
+using ConditionParser.Expressions;
 using ConditionParser.Models;
 using ConditionParser.Modes;
 using System.Linq;
@@ -7,7 +8,6 @@ namespace ConditionParser
 {
     public static class ConditionParser
     {
-
         public static Expression Parse(string condition)
         {
             var iterator = new Iterator(condition);
@@ -39,7 +39,20 @@ namespace ConditionParser
                 if (iterator.End || iterator.Current == ')') return result;
                 if (!iterator.IsOperand()) throw new ConditionParseException(iterator.Position);
                 var mOperand = iterator.ExtractOperand();
-                result = Analyze(iterator, result, mOperand);
+
+                switch (mOperand)
+                {
+                    case Operand.And:
+                        var right = Analyze(iterator, filter, mOperand);
+                        result = Merge(left, operand, right);
+                        break;
+                    case Operand.Or:
+                        result = Analyze(iterator, result, mOperand);
+                        break;
+                    default:
+                        throw new ConditionParseException(iterator.Position);
+                }
+
                 return result;
             }
         }
@@ -70,6 +83,5 @@ namespace ConditionParser
 
             return left ?? right;
         }
-
     }
 }
